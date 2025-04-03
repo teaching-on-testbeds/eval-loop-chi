@@ -4,7 +4,7 @@ all: \
 	1_create_server.ipynb \
 	2_prepare_data.ipynb \
 	3_launch_containers.ipynb \
-	workspace/4_eval_online.ipynb \
+	workspace/4_close_loop.ipynb \
 	5_delete.ipynb
 
 clean: 
@@ -13,7 +13,7 @@ clean:
 	1_create_server.ipynb \
 	2_prepare_data.ipynb \
 	3_launch_containers.ipynb \
-	workspace/4_eval_online.ipynb  \
+	workspace/4_close_loop.ipynb  \
 	5_delete.ipynb
 
 index.md: snippets/*.md 
@@ -21,7 +21,7 @@ index.md: snippets/*.md
 		snippets/create_server.md \
 		snippets/prepare_data.md \
 		snippets/launch_containers.md \
-		snippets/eval_online.md \
+		snippets/close_loop.md \
 		snippets/delete.md \
 		snippets/footer.md \
 		> index.tmp.md
@@ -54,11 +54,11 @@ index.md: snippets/*.md
                 -o 3_launch_containers.ipynb  
 	sed -i 's/attachment://g' 3_launch_containers.ipynb
 
-workspace/4_eval_online.ipynb: snippets/eval_online.md
+workspace/4_close_loop.ipynb: snippets/close_loop.md
 	pandoc --resource-path=../ --embed-resources --standalone --wrap=none \
-				-i snippets/frontmatter_python.md snippets/eval_online.md \
-				-o workspace/4_eval_online.ipynb  
-	sed -i 's/attachment://g' workspace/4_eval_online.ipynb
+				-i snippets/frontmatter_python.md snippets/close_loop.md \
+				-o workspace/4_close_loop.ipynb  
+	sed -i 's/attachment://g' workspace/4_close_loop.ipynb
 
 5_delete.ipynb: snippets/delete.md
 	pandoc --resource-path=../ --embed-resources --standalone --wrap=none \

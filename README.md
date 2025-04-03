@@ -1,2 +1,3 @@
-# eval-online-chi
-Practice online evaluation of an ML system on Chameleon.
+
+# eval-loop-chi
+Practice evaluating a machine learning system by closing the feedback loop.

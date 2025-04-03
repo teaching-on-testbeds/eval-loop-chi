@@ -8,14 +8,14 @@ Inside the SSH session, bring up the Flask, FastAPI, Prometheus, and Grafana ser
 
 
 ```bash
-# runs on node-eval-online
-docker compose -f eval-monitor-chi/docker/docker-compose-prometheus.yaml up -d
+# runs on node-eval-loop
+docker compose -f eval-loop-chi/docker/docker-compose-prometheus.yaml up -d
 ```
 
 Run
 
 ```bash
-# run on node-eval-online
+# run on node-eval-loop
 docker logs jupyter
 ```
 

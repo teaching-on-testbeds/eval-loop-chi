@@ -37,7 +37,7 @@ We will use bring up a `m1.medium` flavor server with the `CC-Ubuntu24.04` disk 
 ```python
 username = os.getenv('USER') # all exp resources will have this prefix
 s = server.Server(
-    f"node-eval-online-{username}", 
+    f"node-eval-loop-{username}", 
     image_name="CC-Ubuntu24.04",
     flavor_name="m1.medium"
 )
@@ -135,7 +135,7 @@ Now, we can use `python-chi` to execute commands on the instance, to set it up. 
 
 ::: {.cell .code}
 ```python
-s.execute("git clone https://github.com/teaching-on-testbeds/eval-monitor-chi")
+s.execute("git clone https://github.com/teaching-on-testbeds/eval-loop-chi")
 ```
 :::
 

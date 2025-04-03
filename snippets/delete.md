@@ -26,7 +26,7 @@ context.choose_site(default="KVM@TACC")
 ::: {.cell .code}
 ```python
 username = os.getenv('USER') # all exp resources will have this prefix
-s = server.get_server(f"node-eval-online-{username}")
+s = server.get_server(f"node-eval-loop-{username}")
 s.delete()
 ```
 :::

@@ -79,7 +79,7 @@ We will use bring up a `m1.medium` flavor server with the `CC-Ubuntu24.04` disk 
 ```python
 username = os.getenv('USER') # all exp resources will have this prefix
 s = server.Server(
-    f"node-eval-online-{username}", 
+    f"node-eval-loop-{username}", 
     image_name="CC-Ubuntu24.04",
     flavor_name="m1.medium"
 )
@@ -157,7 +157,7 @@ Now, we can use `python-chi` to execute commands on the instance, to set it up. 
 
 
 ```python
-s.execute("git clone https://github.com/teaching-on-testbeds/eval-monitor-chi")
+s.execute("git clone https://github.com/teaching-on-testbeds/eval-loop-chi")
 ```
 
 
@@ -238,14 +238,14 @@ Inside the SSH session, bring up the Flask, FastAPI, Prometheus, and Grafana ser
 
 
 ```bash
-# runs on node-eval-online
-docker compose -f eval-monitor-chi/docker/docker-compose-prometheus.yaml up -d
+# runs on node-eval-loop
+docker compose -f eval-loop-chi/docker/docker-compose-prometheus.yaml up -d
 ```
 
 Run
 
 ```bash
-# run on node-eval-online
+# run on node-eval-loop
 docker logs jupyter
 ```
 
@@ -318,7 +318,7 @@ context.choose_site(default="KVM@TACC")
 
 ```python
 username = os.getenv('USER') # all exp resources will have this prefix
-s = server.get_server(f"node-eval-online-{username}")
+s = server.get_server(f"node-eval-loop-{username}")
 s.delete()
 ```
 

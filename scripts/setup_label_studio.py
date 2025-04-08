@@ -165,12 +165,13 @@ def connect_s3_target_storage(project_id, folder_name):
         "description": f"S3 storage for exporting {folder_name} annotations",
         "project": project_id,
         "bucket": "labelstudio",
-        "prefix": f"output/{folder_name}/",
+        "prefix": f"output/{folder_name}",
         "can_delete_objects": True,
         "aws_access_key_id": MINIO_USER,
         "aws_secret_access_key": MINIO_PASSWORD,
         "region_name": "us-east-1", 
-        "s3_endpoint": MINIO_ENDPOINT
+        "s3_endpoint": MINIO_ENDPOINT,
+        "can_delete_objects": True,
     }
     
     response = requests.post(

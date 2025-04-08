@@ -78,8 +78,8 @@ Access Label Studio UI: Visit http://{node-public-ip}:8080 and login with
 - Password: gourmetgrampassword
 - Go into each project and check the sample task created
 - Go into project settings 
-- - Check the Labelling interface tab
-- - Check the Cloud Storage tab which shows that the project is connected to an source and target storage
+    - Check the Labelling interface tab
+    - Check the Cloud Storage tab to see how the project connects to Source Storage and Target Storage
 :::
 
 ::: {.cell .markdown}
@@ -343,14 +343,15 @@ nano /home/cc/eval-loop-chi/gourmetgram/app.py
 1. Import Task Creation Function for user feedback tasks and add the flag icon SVG
 
 ```python
-with open('./images/flag-icon.svg', 'r') as f:
-    FLAG_SVG = f.read()
 from functions.feedback_tasks import create_user_feedback_task
+
 ```
 
 2. Update Upload Function to Include Feedback Button
 
 ```python
+with open('./images/flag-icon.svg', 'r') as f:
+    FLAG_SVG = f.read()
 
 @app.route('/predict', methods=['GET', 'POST'])
 def upload():

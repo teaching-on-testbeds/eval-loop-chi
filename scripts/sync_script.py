@@ -16,8 +16,8 @@ PROJECT_MAP = {
     "3": "userfeedback"
 }
 
-def get_storage_id(project_id, storage_type, is_source=True):
-    """Find the storage ID for a project"""
+def get_import_storage_id(project_id, storage_type):
+    """Find the import storage ID for a project"""
     headers = {
         "Authorization": f"Token {API_TOKEN}"
     }
@@ -30,26 +30,43 @@ def get_storage_id(project_id, storage_type, is_source=True):
     if response.status_code == 200:
         storages = response.json()
         for storage in storages:
-            storage_title = f"Source Storage - {storage_type}" if is_source else f"Target Storage - {storage_type}"
-            if storage_title in storage["title"]:
+            if storage["project"] == int(project_id) and f"Source Storage - {storage_type}" in storage.get("title", ""):
                 return storage["id"]
     
     return None
 
-def sync_project_storage(project_id, is_source=True):
-    """Sync the storage for a specific project ID"""
+def get_export_storage_id(project_id, storage_type):
+    """Find the export storage ID for a project"""
+    headers = {
+        "Authorization": f"Token {API_TOKEN}"
+    }
+    
+    response = requests.get(
+        f"{LABEL_STUDIO_URL}/api/storages/export/s3?project={project_id}",
+        headers=headers
+    )
+    
+    if response.status_code == 200:
+        storages = response.json()
+        for storage in storages:
+            if storage["project"] == int(project_id) and f"Target Storage - {storage_type}" in storage.get("title", ""):
+                return storage["id"]
+    
+    return None
+
+def sync_import_storage(project_id):
+    """Sync the import storage for a specific project ID"""
     if project_id not in PROJECT_MAP:
         print(f"Unknown project ID: '{project_id}'")
         return False
         
     storage_type = PROJECT_MAP[project_id]
-    storage_label = "source" if is_source else "output"
-    print(f"Attempting to sync {storage_type} {storage_label} storage for project ID {project_id}...")
+    print(f"Attempting to sync import storage for {storage_type} (project ID {project_id})...")
     
     # Get storage ID
-    storage_id = get_storage_id(project_id, storage_type, is_source)
+    storage_id = get_import_storage_id(project_id, storage_type)
     if not storage_id:
-        print(f"{storage_label.capitalize()} storage for {storage_type} not found in project {project_id}!")
+        print(f"Import storage for {storage_type} not found in project {project_id}!")
         return False
     
     # Sync storage
@@ -63,10 +80,42 @@ def sync_project_storage(project_id, is_source=True):
     )
     
     if sync_response.status_code in [200, 201, 204]:
-        print(f"Successfully synced {storage_type} {storage_label} storage for project ID {project_id}")
+        print(f"Successfully synced import storage for {storage_type} (project ID {project_id})")
         return True
     else:
-        print(f"Failed to sync {storage_type} {storage_label} storage: {sync_response.status_code} {sync_response.text}")
+        print(f"Failed to sync import storage: {sync_response.status_code} {sync_response.text}")
+        return False
+
+def sync_export_storage(project_id):
+    """Sync the export storage for a specific project ID"""
+    if project_id not in PROJECT_MAP:
+        print(f"Unknown project ID: '{project_id}'")
+        return False
+        
+    storage_type = PROJECT_MAP[project_id]
+    print(f"Attempting to sync export storage for {storage_type} (project ID {project_id})...")
+    
+    # Get storage ID
+    storage_id = get_export_storage_id(project_id, storage_type)
+    if not storage_id:
+        print(f"Export storage for {storage_type} not found in project {project_id}!")
+        return False
+    
+    # Sync storage
+    headers = {
+        "Authorization": f"Token {API_TOKEN}"
+    }
+    
+    sync_response = requests.post(
+        f"{LABEL_STUDIO_URL}/api/storages/export/s3/{storage_id}/sync",
+        headers=headers
+    )
+    
+    if sync_response.status_code in [200, 201, 204]:
+        print(f"Successfully synced export storage for {storage_type} (project ID {project_id})")
+        return True
+    else:
+        print(f"Failed to sync export storage: {sync_response.status_code} {sync_response.text}")
         return False
 
 def main():
@@ -91,8 +140,8 @@ def main():
     # Sync each project's storage
     for project_id in project_ids_to_sync:
         if project_id in PROJECT_MAP:
-            sync_project_storage(project_id, is_source=True)
-            sync_project_storage(project_id, is_source=False)
+            sync_import_storage(project_id)
+            sync_export_storage(project_id)
         else:
             print(f"Unknown project ID: '{project_id}'. Available project IDs: {', '.join(PROJECT_MAP.keys())}")
     

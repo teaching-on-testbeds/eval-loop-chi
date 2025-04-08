@@ -28,7 +28,8 @@ services:
     depends_on:
       - minio
     volumes:
-      - /home/cc/eval-loop-chi/docker/task_dummy.json:/tmp/task_dummy.json
+      - /home/cc/eval-loop-chi/docker/task_0.json:/tmp/task_0.json
+      - /home/cc/eval-loop-chi/gourmetgram/instance/uploads/test_image.jpeg:/tmp/test_image.jpeg
     entrypoint: |
       /bin/sh -c "
       # Wait for MinIO to be ready
@@ -45,7 +46,7 @@ services:
       mc mb -p myminio/lowconfidence
       mc mb -p myminio/userfeedback
 
-      mc policy set download myminio/production
+      mc policy set public myminio/production
       
       # Create labelstudio structure
       mc mb -p myminio/labelstudio/tasks/randomsampled
@@ -57,9 +58,13 @@ services:
       mc mb -p myminio/labelstudio/output/userfeedback
       
       # Copy JSON files
-      mc cp /tmp/task_dummy.json myminio/labelstudio/tasks/randomsampled/
-      mc cp /tmp/task_dummy.json myminio/labelstudio/tasks/lowconfidence/
-      mc cp /tmp/task_dummy.json myminio/labelstudio/tasks/userfeedback/
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/randomsampled/
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/lowconfidence/
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/userfeedback/
+
+      # Copy test image
+      mc mb -p myminio/production/class_10
+      mc cp /tmp/test_image.jpeg myminio/production/class_10/
 
       # Create empty production.json in tracking bucket
       echo '[]' > /tmp/production.json

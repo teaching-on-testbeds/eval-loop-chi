@@ -31,18 +31,20 @@ def process_outputs():
         if fs.exists(output_path):
             json_files = [f for f in fs.ls(output_path)]
             
+            
             for json_file in json_files:
+                print(json_file)
                 # Read and parse the JSON file
                 with fs.open(json_file, 'r') as f:
                     try:
                         annotation_data = json.load(f)
                         
-                        # Extract original image URL and newly assigned class
-                        image_url = annotation_data.get('data', {}).get('image', '')
-                        
+                        # Extract original image URL
+                        image_url = annotation_data.get('task', {}).get('data', {}).get('image', '')
+
                         # Extract the annotated result
-                        results = annotation_data.get('annotations', [{}])[0].get('result', [])
-                        
+                        results = annotation_data.get('result', [])
+
                         if results and image_url:
                             # Extract chosen class value (the annotator's choice)
                             for result in results:
@@ -76,13 +78,6 @@ def process_outputs():
                                             # Copy the image
                                             fs.copy(source_image, target_path)
                                             
-                                            # Move the processed JSON to a processed folder
-                                            processed_dir = f"{output_path}processed/"
-                                            if not fs.exists(processed_dir):
-                                                fs.makedirs(processed_dir)
-                                                
-                                            # Move JSON to processed folder
-                                            fs.copy(json_file, f"{processed_dir}{os.path.basename(json_file)}")
                                             fs.rm(json_file)
                                         except ValueError:
                                             # Class not found in list

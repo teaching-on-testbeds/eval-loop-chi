@@ -16,8 +16,8 @@ PROJECT_MAP = {
     "3": "userfeedback"
 }
 
-def get_source_storage_id(project_id, storage_type):
-    """Find the source storage ID for a project"""
+def get_storage_id(project_id, storage_type, is_source=True):
+    """Find the storage ID for a project"""
     headers = {
         "Authorization": f"Token {API_TOKEN}"
     }
@@ -30,24 +30,26 @@ def get_source_storage_id(project_id, storage_type):
     if response.status_code == 200:
         storages = response.json()
         for storage in storages:
-            if f"Source Storage - {storage_type}" in storage["title"]:
+            storage_title = f"Source Storage - {storage_type}" if is_source else f"Target Storage - {storage_type}"
+            if storage_title in storage["title"]:
                 return storage["id"]
     
     return None
 
-def sync_project_storage(project_id):
-    """Sync the source storage for a specific project ID"""
+def sync_project_storage(project_id, is_source=True):
+    """Sync the storage for a specific project ID"""
     if project_id not in PROJECT_MAP:
         print(f"Unknown project ID: '{project_id}'")
         return False
         
     storage_type = PROJECT_MAP[project_id]
-    print(f"Attempting to sync {storage_type} storage for project ID {project_id}...")
+    storage_label = "source" if is_source else "output"
+    print(f"Attempting to sync {storage_type} {storage_label} storage for project ID {project_id}...")
     
     # Get storage ID
-    storage_id = get_source_storage_id(project_id, storage_type)
+    storage_id = get_storage_id(project_id, storage_type, is_source)
     if not storage_id:
-        print(f"Source storage for {storage_type} not found in project {project_id}!")
+        print(f"{storage_label.capitalize()} storage for {storage_type} not found in project {project_id}!")
         return False
     
     # Sync storage
@@ -61,16 +63,16 @@ def sync_project_storage(project_id):
     )
     
     if sync_response.status_code in [200, 201, 204]:
-        print(f"Successfully synced {storage_type} storage for project ID {project_id}")
+        print(f"Successfully synced {storage_type} {storage_label} storage for project ID {project_id}")
         return True
     else:
-        print(f"Failed to sync {storage_type} storage: {sync_response.status_code} {sync_response.text}")
+        print(f"Failed to sync {storage_type} {storage_label} storage: {sync_response.status_code} {sync_response.text}")
         return False
 
 def main():
     """Main function to sync project storages"""
     # Set up argument parser
-    parser = argparse.ArgumentParser(description='Sync Label Studio project source storages')
+    parser = argparse.ArgumentParser(description='Sync Label Studio project storages')
     parser.add_argument('project_ids', nargs='*', help='Project IDs to sync. If none provided, all projects will be synced.')
     
     args = parser.parse_args()
@@ -89,7 +91,8 @@ def main():
     # Sync each project's storage
     for project_id in project_ids_to_sync:
         if project_id in PROJECT_MAP:
-            sync_project_storage(project_id)
+            sync_project_storage(project_id, is_source=True)
+            sync_project_storage(project_id, is_source=False)
         else:
             print(f"Unknown project ID: '{project_id}'. Available project IDs: {', '.join(PROJECT_MAP.keys())}")
     

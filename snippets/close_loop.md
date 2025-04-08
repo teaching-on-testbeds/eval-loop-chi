@@ -31,62 +31,88 @@ Here's how all the components work together:
 3. **MinIO Object Store**: This stores all our data:
    - Images are stored in the "production" bucket by class
    - JSON task files are stored in the "labelstudio/tasks/" directory
+   - JSON output files are stored in the "labelstudio/tasks/" directory
    - Labeled data will be stored in output locations configured in Label Studio
 
 4. **Label Studio**: This is our annotation platform that:
-   - Reads task JSON files from the "labelstudio/tasks/" directory in MinIO
+   - Reads task JSON files from the "labelstudio/tasks/" directory 
    - Presents images to annotators
    - Saves completed annotations to output storage locations "labelstudio/output/" in MinIO
 
 Data flows like this:
-User → Flask → FastAPI → Flask → MinIO Source Storage Buckets → Label Studio → Annotated Data Buckets (Target Storage Buckets)
 
-Now, lets bring the system up by running the below cell!
+`User → Flask → FastAPI → Flask → Source Storage (labelstudio/tasks/) → Label Studio → Target Storage (labelstudio/output/)`
+
 :::
 
-::: {.cell .code}
-```python
-# Bringing up system using Docker-compose
-remote.run('docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up -d')
+::: {.cell .markdown}
+### Setting Up Label Studio for Annotation
 
-# Lets wait 30 seconds for it to get ready
-remote.run('sleep 15')
+Let's set up Label Studio, our tool for managing human annotations of images. 
+
+Inside the SSH session,
+
+First, find your Label Studio container ID:
+
+```bash
+docker ps | grep label
 ```
-:::
 
-::: {.cell .markdown}
-Post that, let's run the script that sets up the necessary things in Label Studio 
-1. Creates three different projects for each specific task ( Random sampling, User Feedback, Low Confidence) with necessary details.
-2. Sets up the labeling interface with the same configuration for all projects
-3. Connects to MinIO S3 storage for both input (source) and output (target) data
-3. Configures separate folders for each project's data
-
-After running the next cell, go to {node-public-ip}:8080 and login with credentials and explore Label Studio.
-`username` : gourmetgramuser@gmail.com
-`password` : gourmetgrampassword
-:::
-
-::: {.cell .markdown}
-
-::: {.cell .code}
-```python
+Run the below command : 
+```bash
 # Setting up Label Studio (Replace label_studio_container_id with the correct container id using docker ps )
-remote.run('docker exec label_studio_container_id python3 setup_label_studio.py')
+docker exec <label_studio_container_id> python3 setup_label_studio.py
 ```
+
+This script:
+
+- Creates three projects (Random Sampling, Low Confidence, User Feedback)
+- Configures the labeling interface for food classification
+- Connects to MinIO for source and target storage
+- Sets up separate directories for each project's data
+
+
+Access Label Studio UI: Visit http://{node-public-ip}:8080 and login with
+
+- Username: gourmetgramuser@gmail.com
+- Password: gourmetgrampassword
+- Go into each project and check the sample task created
+- Go into project settings 
+- - Check the Labelling interface tab
+- - Check the Cloud Storage tab which shows that the project is connected to an source and target storage
 :::
+
+::: {.cell .markdown}
 
 ### Set aside data for a human to label
 
-We are going to store the production images in a `production` bucket present in the minio object store. 
+We are going to store the images user provide in the `Production` bucket in MinIO Object store.
 
 In order to do this, let's modify the flask application. 
 
-1) Install s3fs package which we will use to interact with the Minio container 
+Inside the SSH session : 
+
+1) Add `s3fs` to requirements.txt in the gourmetgram folder
+
 ```bash
-pip install s3fs
+nano /home/cc/eval-loop-chi/gourmetgram/requirements.txt
 ```
 
-2) Use nano to modify app.py and insert the following 3 blocks of code 
+2) Copy functions folder into gourmetgram folder
+
+```bash
+cp -r /home/cc/eval-loop-chi/functions /home/cc/eval-loop-chi/gourmetgram/functions
+```
+
+2) Modify the contents of app.py in gourmetgram folder using below command.
+
+```bash
+nano /home/cc/eval-loop-chi/gourmetgram/app.py
+```
+
+In app.py, 
+
+Add these imports at the top of the file:
 
 ```python
 import s3fs
@@ -95,6 +121,12 @@ import datetime
 import uuid
 #Include jsonify here
 from flask import Flask, redirect, url_for, request, render_template, jsonify
+from functions.storage import store_prediction_in_tracking
+```
+
+Initialize S3 Filesystem and a dictionary to store predictions: 
+
+```python
 # Initalize s3fs 
 fs = s3fs.S3FileSystem(endpoint_url="http://minio:9000",key="minioadmin",secret="minioadmin",use_ssl=False)
 
@@ -102,39 +134,12 @@ classes = np.array(["Bread", "Dairy product", "Dessert", "Egg", "Fried food",
     "Meat", "Noodles/Pasta", "Rice", "Seafood", "Soup",
     "Vegetable/Fruit"])
 
-# Dictionary to track predictions
+# Dictionary to store predictions
 current_predictions = {}
 ```
 
-```python
-# Function to store prediction data
-def store_prediction_in_tracking(prediction_data):
-    # Path to the JSON file in tracking bucket
-    object_path = "tracking/production.json"
-    
-    # Check if the file already exists
-    try:
-        if fs.exists(object_path):
-            # Read existing data
-            with fs.open(object_path, 'r') as f:
-                existing_data = json.load(f)
-        else:
-            # Start with empty list if file doesn't exist
-            existing_data = []
-            
-        # Add new prediction data with timestamp
-        prediction_data["timestamp"] = datetime.datetime.now().isoformat()
-        existing_data.append(prediction_data)
-        
-        # Write updated data back to file
-        with fs.open(object_path, 'w') as f:
-            json.dump(existing_data, f, indent=2)
-            
-    except Exception as e:
-        print(f"Error storing prediction in tracking: {e}")
-```
+Update the upload() function to save images and prediction details :
 
-Change the predict function to this
 ```python
 @app.route('/predict', methods=['GET', 'POST'])
 def upload():
@@ -172,73 +177,77 @@ def upload():
             }
 
             # Store prediction in tracking
-            store_prediction_in_tracking(current_predictions[prediction_id])
+            store_prediction_in_tracking(fs, current_predictions[prediction_id])
             
             return f'<button type="button" class="btn btn-info btn-sm">{preds}</button>'
     
     return '<a href="#" class="badge badge-warning">Warning</a>'
 ```
 
-Execute the below cell to reload the Flask application with our new code. Now, every image that is predicted by the Flask application is stored in the `production` bucket in the respective class folder. You can test it by predicting an image and checking it in the Minio Object Store at {node-public-ip}:9001
+Rebuild the Flask Container:
 
-:::
-
-::: {.cell .code}
-```python
-# Restarting the Flask container with the updated frontend and app.py
-remote.run("docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml restart flask")
+```bash
+# Rebuild the Flask container with the updated app.py
+docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
-:::
 
-::: {.cell .code}
-```python
-# Set up a cron job to run random sampling once per day
-remote.run("echo '0 0 * * * docker exec label-studio python3 /label-studio/random_sampling.py' | crontab -")
+Our first feedback loop method randomly selects production images for human annotation. Let's set up a hourly cron job for random sampling and run it on demand once:
+
+```bash
+# Set up a cron job to run random sampling once a day
+echo '0 0 * * * docker exec <label_studio_container_id> python3 /label-studio/random_sampling.py' | crontab -
 ```
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/random_sampling.py' | crontab -
+```
+
+This cron job:
+
+- Runs once per day
+- Randomly selects unsampled images from the production bucket
+- Creates task JSONs in the "labelstudio/tasks/randomsampling" folder
+
+Set up an daily cron job to sync with Label Studio and run it on demand once:
+
+```bash
+(crontab -l 2>/dev/null; echo '0 0 * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 1') | crontab -
+```
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 1
+```
+
+#### Testing the Feedback Loop
+
+1. Go to http://{public-node-ip}:5000
+2. Upload food-11 images images present in /data/food11 folder 
+3. Wait for random sampling script to run and Label Studio to Sync and Go to http://{public-node-ip}:8080 and login to see the tasks created by random sampling. 
+4. Complete the random sampling tasks and provide your prediction for the image.
+
 :::
 
 ::: {.cell .markdown}   
 
 ### Set aside samples for which model has low confidence
 
-Low confidence means the model is unsure about the classification for a given image. These images which the model found difficult to predict are especially useful for re-training. 
+Our second method identifies images where the model has low confidence in its prediction, making them valuable for retraining.
 
-Lets modify our Flask application so that the low confidence images are sent to human annotators for review and the annotated images are used for retraining later on.
+Use the below command to modify app.py :
 
-1. Now, we define a new function `create_low_confidence_task` that creates a task for low confidence images in Label Studio and a dictionary `current_predictions` to keep track of prediction
-
-```python
-
-def create_low_confidence_task(image_url, predicted_class, confidence, filename):
-    # Create unique task ID
-    task_id = str(uuid.uuid4())
-   
-    # Create task data
-    task_data = {
-        "data": {
-            "image": image_url,
-            "ml_prediction": predicted_class,
-            "confidence": confidence,
-            "user_feedback": "low_confidence",
-            "source": "low_confidence",
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-    }
-   
-    # Create JSON file in memory
-    task_json = json.dumps(task_data, indent=2)
-   
-    # Define the object path
-    object_path = f"labelstudio/tasks/lowconfidence/task_{task_id}.json"
-   
-    # Upload JSON using s3fs
-    with fs.open(object_path, 'w') as f:
-        f.write(task_json)
-   
-    return task_id
+```bash
+nano /home/cc/eval-loop-chi/gourmetgram/app.py
 ```
 
-2. We will call this function when the confidence of predicted image goes below a pre-defined threshold 
+1. Import Task Creation Function for low confidence tasks
+
+Add this import to app.py:
+
+```python
+from functions.feedback_tasks import create_low_confidence_task
+```
+
+2. Update the upload() function in app.py to identify and send low confidence predictions for review based on a predefined threshold:
 
 ```python
 @app.route('/predict', methods=['GET', 'POST'])
@@ -274,12 +283,13 @@ def upload():
                 "sampled" : False
             }
 
-            store_prediction_in_tracking(current_predictions[prediction_id])
+            store_prediction_in_tracking(fs, current_predictions[prediction_id])
 
             confidence_threshold = 0.7
 
             if probs < confidence_threshold:
                 create_low_confidence_task(
+                    fs,
                     image_url=current_predictions[prediction_id]["image_url"],
                     predicted_class=preds,
                     confidence=probs,
@@ -291,62 +301,57 @@ def upload():
     return '<a href="#" class="badge badge-warning">Warning</a>'
 ```
 
-:::
-
-::: {.cell .code}
-```python
-# Restarting the Flask container with the updated app.py
-remote.run("docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml restart flask")
+3. Rebuild the Flask container
+```bash
+# Rebuild the Flask container with the updated app.py
+docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
-:::
 
-::: {.cell .code}
-```python
+4. Setup hourly job to sync Label Studio and run it once on demand
+
+```bash
 # Setting up a job to process the low confidence input jsons into Label Studio (Replace placeholder label-studio with actual container ID)
-remote.run("(crontab -l 2>/dev/null; echo '0 * * * * docker exec label-studio python3 /label-studio/sync_script.py 1') | crontab -")
+(crontab -l 2>/dev/null; echo '0 * * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 2') | crontab -
 ```
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 2
+```
+
+#### Testing the Feedback Loop
+
+1. Go to http://{public-node-ip}:5000.
+2. Upload ambiguous images images present in /lowconfidence folder in data.
+3. Wait for Label Studio to Sync and Go to http://{public-node-ip}:8080 and login to see the tasks created by low confidence predictions.
+4. Complete the low confidence tasks by giving your prediction for the image.
+
 :::
+
 
 ::: {.cell .markdown}
 
 ### Get explicit feedback from users
 
-Now, lets look towards the user whether they think the prediction given is correct or not. This feedback may be sparse (some users won't bother giving feedback even if the label is wrong) and noisy (some users may give incorrect feedback). We can get human annotators to label this data, too.
+Our third method enables users to provide feedback when they think the model's prediction is incorrect. This feedback may be sparse (some users won't bother giving feedback even if the label is wrong) and noisy (some users may give incorrect feedback). We can get human annotators to label this data, too.
 
-1. Just like the previous stage, we will include a new function create_user_feedback_task which creates tasks in Label Studio based on negative user feedback 
+Use the below command to modify app.py :
 
-```python
-def create_user_feedback_task(image_url, predicted_class, confidence, filename):
-    # Create unique task ID
-    task_id = str(uuid.uuid4())
-   
-    # Create task data
-    task_data = {
-        "data": {
-            "image": image_url,
-            "ml_prediction": predicted_class,
-            "confidence": confidence,
-            "user_feedback": "incorrect",
-            "source": "user_feedback",
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-    }
-   
-    # Create JSON file in memory
-    task_json = json.dumps(task_data, indent=2)
-   
-    # Define the object path
-    object_path = f"labelstudio/tasks/userfeedback/task_{task_id}.json"
-   
-    # Upload JSON using s3fs
-    with fs.open(object_path, 'w') as f:
-        f.write(task_json)
-   
-    return task_id
+```bash
+nano /home/cc/eval-loop-chi/gourmetgram/app.py
 ```
 
-2. We will update the predict function to include a feedback button in the response 
+1. Import Task Creation Function for user feedback tasks and add the flag icon SVG
+
 ```python
+with open('./images/flag-icon.svg', 'r') as f:
+    FLAG_SVG = f.read()
+from functions.feedback_tasks import create_user_feedback_task
+```
+
+2. Update Upload Function to Include Feedback Button
+
+```python
+
 @app.route('/predict', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':
@@ -381,7 +386,7 @@ def upload():
                 "sampled" : False
             }
 
-            store_prediction_in_tracking(current_predictions[prediction_id])
+            store_prediction_in_tracking(fs,current_predictions[prediction_id])
             
             # Return the result with a flag icon for incorrect label feedback
             result_html = f'''
@@ -390,9 +395,7 @@ def upload():
                 <button class="btn btn-sm feedback-btn" data-prediction-id="{prediction_id}" 
                         data-bs-toggle="tooltip" data-bs-placement="top" title="Flag incorrect label"
                         style="background: none; border: none; color: #dc3545; padding: 2px 0 0 8px; margin-left: 5px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-flag" viewBox="0 0 16 16">
-                        <path d="M14.778.085A.5.5 0 0 1 15 .5V8a.5.5 0 0 1-.314.464L14.5 8l.186.464-.003.001-.006.003-.023.009a12.435 12.435 0 0 1-.397.15c-.264.095-.631.223-1.047.35-.816.252-1.879.523-2.71.523-.847 0-1.548-.28-2.158-.525l-.028-.01C7.68 8.71 7.14 8.5 6.5 8.5c-.7 0-1.638.23-2.437.477A19.626 19.626 0 0 0 3 9.342V15.5a.5.5 0 0 1-1 0V.5a.5.5 0 0 1 1 0v.282c.226-.079.496-.17.79-.26C4.606.272 5.67 0 6.5 0c.84 0 1.524.277 2.121.519l.043.018C9.286.788 9.828 1 10.5 1c.7 0 1.638-.23 2.437-.477a19.587 19.587 0 0 0 1.349-.476l.019-.007.004-.002h.001"/>
-                    </svg>
+                    {FLAG_SVG}
                 </button>
             </div>
             '''
@@ -402,7 +405,8 @@ def upload():
     return '<a href="#" class="badge badge-warning">Warning</a>'
 ```
 
-3. A /feedback endpoint and respective feedback function that handles user feedback 
+3. Add Feedback Route to Handle User Feedback
+
 ```python
 @app.route('/feedback', methods=['POST'])
 def feedback():
@@ -415,6 +419,7 @@ def feedback():
     
     # Create user feedback task
     task_id = create_user_feedback_task(
+        fs,
         image_url=pred_data["image_url"],
         predicted_class=pred_data["prediction"],
         confidence=pred_data["confidence"],
@@ -427,38 +432,65 @@ def feedback():
         "message": "Thank you for your feedback!"
     })
 ```
-:::
 
-::: {.cell .code}
-```python
+4. Update Frontend Files and rebuild the Flask container 
+
+```bash
 # Copying front end files into our flask container to update the UI to include feedback
-remote.run("docker cp /home/cc/eval-loop-chi/frontend/feedback_v1/templates/index.html flask:/app/templates/index.html")
-remote.run("docker cp /home/cc/eval-loop-chi/frontend/feedback_v1/templates/base.html flask:/app/templates/base.html")
+cp /home/cc/eval-loop-chi/frontend/feedback_v1/templates/index.html /home/cc/eval-loop-chi/gourmetgram/templates/index.html
+cp /home/cc/eval-loop-chi/frontend/feedback_v1/templates/base.html /home/cc/eval-loop-chi/gourmetgram/templates/base.html
 
-remote.run("docker cp /home/cc/eval-loop-chi/frontend/feedback_v1/static/js/main.js flask:/app/static/js/main.js")
-remote.run("docker cp /home/cc/eval-loop-chi/frontend/feedback_v1/static/css/main.css flask:/app/static/css/main.css")
-```
-:::
+cp /home/cc/eval-loop-chi/frontend/feedback_v1/static/js/main.js /home/cc/eval-loop-chi/gourmetgram/static/js/main.js
+cp /home/cc/eval-loop-chi/frontend/feedback_v1/static/css/main.css /home/cc/eval-loop-chi/gourmetgram/static/css/main.css
 
-::: {.cell .code}
-```python
-# Restarting the Flask container with the updated frontend and app.py
-remote.run("docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml restart flask")
+mkdir -p /home/cc/eval-loop-chi/gourmetgram/images/
+cp /home/cc/eval-loop-chi/images/flag-icon.svg /home/cc/eval-loop-chi/gourmetgram/images
 ```
-:::
 
-::: {.cell .code}
-```python
-# Setting up a job to process the low confidence input jsons into Label Studio (Replace placeholder with actual container ID)
-remote.run("(crontab -l 2>/dev/null; echo '0 * * * * docker exec label-studio python3 /label-studio/sync_script.py 2') | crontab -")
+```bash
+docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
+
+5. Set up Label Studio Sync CRON Job for User feedback and run it once on demand
+
+```bash
+(crontab -l 2>/dev/null; echo '0 * * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3') | crontab -
+```
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3
+```
+
+#### Testing the Feedback Loop
+
+1. Go to http://{public-node-ip}:5000.
+2. Upload  images present in data/userfeedback/ folder.
+3. Provide negative feedback for the prediction
+3. Wait for Label Studio to Sync and go to http://{public-node-ip}:8080 and login to see the tasks created by user feedback tasks. Complete the user feedback tasks.
 :::
 
 ::: {.cell .markdown}
-Now, go to the Flask frontend and you can see that the UI has a feedback button right of the prediction. Whenever user clicks on the Flag icon, a task json is sent to the input storage associated with 'User Feedback' Project. 
+Now that we've collected labeled data from human annotators in Label Studio, we need to process these annotations and organize them for model retraining. The labeled data is currently stored in the /labelstudio/output/ path in our MinIO storage system.
+
+Make sure you've finished the tasks in the Label Studio. To process these annotations and create properly organized training data, run:
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 
+docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py
+```
+
+This script:
+
+- Synchronizes results by sending output tasks to the respective folders in `labelstudio` bucket
+- Extracts the human-verified labels from the annotation results
+- Retrieves the corresponding images from our production storage
+- Organizes these images into class-specific buckets based on their corrected labels
+- Creates a structured dataset ready for model retraining
+- Maintains separate tracking for annotations from different feedback sources (random sampling, user feedback, and low confidence predictions)
+
 :::
 
-
+::: {.cell .markdown}
 ### Get explicit labels from users
 
 :::

@@ -120,13 +120,13 @@ def connect_s3_source_storage(project_id, folder_name):
     
     storage_config = {
         "title": f"Source Storage - {folder_name}",
-        "description": f"S3 storage for {folder_name} tasks",  # Add description
+        "description": f"S3 storage for {folder_name} tasks",  
         "project": project_id,
         "bucket": "labelstudio",
         "prefix": f"tasks/{folder_name}/",
         "aws_access_key_id": MINIO_USER,
         "aws_secret_access_key": MINIO_PASSWORD,
-        "region_name": "us-east-1",  # Add region_name
+        "region_name": "us-east-1",  
         "s3_endpoint": MINIO_ENDPOINT
     }
     

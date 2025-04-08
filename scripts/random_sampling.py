@@ -75,7 +75,7 @@ def create_task_json(image_url, predicted_class, confidence, filename):
     }
    
     # Define the object path
-    object_path = f"labelstudio/tasks/randomsampled/task_{task_id}.json"
+    object_path = f"labelstudio/tasks/randomsampled/task{task_id}.json"
    
     # Upload JSON using s3fs
     with fs.open(object_path, 'w') as f:

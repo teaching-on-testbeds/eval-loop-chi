@@ -41,12 +41,9 @@ services:
       mc mb -p myminio/production
       mc mb -p myminio/labelstudio
       mc mb -p myminio/tracking
-      
-      # Create class folders in production
-      for i in 0 1 2 3 4 5 6 7 8 9 10; do
-        DIR_NUM=\$(printf \"%02d\" \$i)
-        mc mb -p myminio/production/class_\$DIR_NUM
-      done
+      mc mb -p myminio/cleanproduction
+      mc mb -p myminio/lowconfidence
+      mc mb -p myminio/userfeedback
 
       mc policy set download myminio/production
       
@@ -73,7 +70,8 @@ services:
 
   flask:
     build:
-      context: https://github.com/teaching-on-testbeds/gourmetgram.git#fastapi
+      context: /home/cc/eval-loop-chi/gourmetgram
+      dockerfile: Dockerfile
     container_name: flask
     ports:
       - "5000:5000"
@@ -88,6 +86,7 @@ services:
       - ../scripts/setup_label_studio.py:/label-studio/setup_label_studio.py
       - ../scripts/sync_script.py:/label-studio/sync_script.py
       - ../scripts/random_sampling.py:/label-studio/random_sampling.py
+      - ../scripts/process_outputs.py:/label-studio/process_outputs.py
     environment:
       - LABEL_STUDIO_URL=http://label-studio:8080
       - LABEL_STUDIO_USERNAME=gourmetgramuser@gmail.com

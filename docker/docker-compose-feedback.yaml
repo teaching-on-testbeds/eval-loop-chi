@@ -46,7 +46,7 @@ services:
       mc mb -p myminio/lowconfidence
       mc mb -p myminio/userfeedback
 
-      mc policy set public myminio/production
+      mc anonymous set public myminio/production
       
       # Create labelstudio structure
       mc mb -p myminio/labelstudio/tasks/randomsampled

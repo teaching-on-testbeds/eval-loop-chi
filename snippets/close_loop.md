@@ -86,7 +86,7 @@ Access Label Studio UI: Visit http://{node-public-ip}:8080 and login with
 
 ### Set aside data for a human to label
 
-We are going to store the images user provide in the `Production` bucket in MinIO Object store.
+This stage involves storing user-submitted images in the `Production` bucket within our MinIO Object Store 
 
 In order to do this, let's modify the flask application. 
 
@@ -191,15 +191,11 @@ Rebuild the Flask Container:
 docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
 
-Our first feedback loop method randomly selects production images for human annotation. Let's set up a hourly cron job for random sampling and run it on demand once:
+Our first feedback loop method randomly selects production images for human annotation. Let's set up a hourly cron job for random sampling:
 
 ```bash
 # Set up a cron job to run random sampling once a day
 echo '0 0 * * * docker exec <label_studio_container_id> python3 /label-studio/random_sampling.py' | crontab -
-```
-
-```bash
-docker exec <label_studio_container_id> python3 /label-studio/random_sampling.py' | crontab -
 ```
 
 This cron job:
@@ -208,21 +204,24 @@ This cron job:
 - Randomly selects unsampled images from the production bucket
 - Creates task JSONs in the "labelstudio/tasks/randomsampling" folder
 
-Set up an daily cron job to sync with Label Studio and run it on demand once:
+Set up an daily cron job to sync with Label Studio:
 
 ```bash
 (crontab -l 2>/dev/null; echo '0 0 * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 1') | crontab -
 ```
 
-```bash
-docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 1
-```
-
 #### Testing the Feedback Loop
 
 1. Go to http://{public-node-ip}:5000
-2. Upload food-11 images images present in /data/food11 folder 
-3. Wait for random sampling script to run and Label Studio to Sync and Go to http://{public-node-ip}:8080 and login to see the tasks created by random sampling. 
+2. Upload test images from the /data/food11 folder 
+3. Let's perform random sampling and label studio sync on demand by executing below commands in SSH 
+
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/random_sampling.py'
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 1
+```
+
+ and go to http://{public-node-ip}:8080 and login to see the tasks created by random sampling. 
 4. Complete the random sampling tasks and provide your prediction for the image.
 
 :::
@@ -307,22 +306,22 @@ def upload():
 docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
 
-4. Setup hourly job to sync Label Studio and run it once on demand
+4. Setup hourly job to sync Label Studio
 
 ```bash
 # Setting up a job to process the low confidence input jsons into Label Studio (Replace placeholder label-studio with actual container ID)
 (crontab -l 2>/dev/null; echo '0 * * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 2') | crontab -
 ```
 
-```bash
-docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 2
-```
-
 #### Testing the Feedback Loop
 
 1. Go to http://{public-node-ip}:5000.
-2. Upload ambiguous images images present in /lowconfidence folder in data.
-3. Wait for Label Studio to Sync and Go to http://{public-node-ip}:8080 and login to see the tasks created by low confidence predictions.
+2. Upload test images from the /data/lowconfidence folder in data.
+3. Let's sync Label Studio on demand by executing 
+```bash 
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 2
+```
+and then go to http://{public-node-ip}:8080 and login to see the tasks created by low confidence predictions.
 4. Complete the low confidence tasks by giving your prediction for the image.
 
 :::
@@ -452,41 +451,56 @@ cp /home/cc/eval-loop-chi/images/flag-icon.svg /home/cc/eval-loop-chi/gourmetgra
 docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
 ```
 
-5. Set up Label Studio Sync CRON Job for User feedback and run it once on demand
+5. Set up Label Studio Sync CRON Job for User feedback
 
 ```bash
 (crontab -l 2>/dev/null; echo '0 * * * * docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3') | crontab -
 ```
 
-```bash
-docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3
-```
-
 #### Testing the Feedback Loop
 
 1. Go to http://{public-node-ip}:5000.
-2. Upload  images present in data/userfeedback/ folder.
+2. Upload test images from the data/userfeedback/ folder.
 3. Provide negative feedback for the prediction
-3. Wait for Label Studio to Sync and go to http://{public-node-ip}:8080 and login to see the tasks created by user feedback tasks. Complete the user feedback tasks.
+3. Let's sync Label Studio on demand by executing this in SSH
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3
+```
+and go to http://{public-node-ip}:8080 and login to see the tasks created by user feedback tasks. Complete the user feedback tasks.
 :::
 
 ::: {.cell .markdown}
 Now that we've collected labeled data from human annotators in Label Studio, we need to process these annotations and organize them for model retraining. The labeled data is currently stored in the /labelstudio/output/ path in our MinIO storage system.
 
-Make sure you've finished the tasks in the Label Studio. To process these annotations and create organized training data, run:
+Make sure you've finished the tasks in the Label Studio. 
+
+To synchronize the annotation results with our MinIO Object Store:
 
 ```bash
 docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 
+```
+
+This script executes our synchronization utility, which:
+
+- Retrieves completed annotation results from Label Studio
+- Converts them to standardized JSON format
+- Distributes them to their respective project directories in the /output folder of labelstudio bucket
+
+Navigate to the MinIO web interface at http://{public-node-ip}:9001 and inspect the /output/ directory within the labelstudio bucket.
+We will find output JSON files within each project folder.
+
+```bash
 docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py
 ```
 
-This does the following:
+This above script does the following:
 
-- Synchronizes results by sending output tasks to the respective folders in `labelstudio` bucket
 - Extracts the human-verified labels from the annotation results
 - Retrieves the corresponding images from our production storage
 - Organizes these images into class-specific buckets based on their corrected labels
 - Creates a structured dataset ready for model retraining
+
+Navigate to the MinIO web interface at http://{public-node-ip}:9001 and inspect the cleanproduction, lowconfidence and userfeedback buckets to find the structured dataset.
 
 :::
 
@@ -562,7 +576,7 @@ def get_classes():
     return jsonify(classes.tolist())
 ```
 
-3. Update feedback function : 
+4. Update feedback function : 
 
 ```python
 @app.route('/feedback', methods=['POST'])
@@ -648,9 +662,12 @@ docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up 
 
 #### Testing the Feedback Loop
 
-1. Go to http://{public-node-ip}:5000.
-2. Upload  images present in data/userfeedback/ folder.
-3. Click the pencil icon and change the predicted class 
-4. Run `docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py` in SSH terminal in order to send the images to the correct class folder in `userfeedback2` bucket
+1. Go to application interface at http://{public-node-ip}:5000
+2. Upload test images from the data/userfeedback/ directory
+3. Locate the pencil icon adjacent to the prediction and use it to select the correct classification from the dropdown menu
+4. Process the corrections by executing:
 
+```bash
+docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py
+```
 :::

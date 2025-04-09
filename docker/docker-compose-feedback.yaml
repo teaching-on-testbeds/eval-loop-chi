@@ -8,7 +8,6 @@ services:
     ports:
       - "8000:8000"  # for HTTP requests
   
-  # Added production bucket with Food11 image folder structure 
   minio:
       image: minio/minio
       container_name: minio
@@ -86,15 +85,11 @@ services:
       - FASTAPI_SERVER_URL=http://fastapi_server:8000 # let Flask app know where to access the inference endpoint
   
   label-studio:
-    build:
-      dockerfile: Dockerfile
+    image: heartexlabs/label-studio:latest
     ports:
       - "8080:8080"
     volumes:
-      - ../scripts/setup_label_studio.py:/label-studio/setup_label_studio.py
-      - ../scripts/sync_script.py:/label-studio/sync_script.py
-      - ../scripts/random_sampling.py:/label-studio/random_sampling.py
-      - ../scripts/process_outputs.py:/label-studio/process_outputs.py
+      - /home/cc/eval-loop-chi/scripts:/label-studio/scripts
     environment:
       - LABEL_STUDIO_URL=http://label-studio:8080
       - LABEL_STUDIO_USERNAME=gourmetgramuser@gmail.com
@@ -109,6 +104,23 @@ services:
       - POSTGRES_DB=appdb
     depends_on:
       - minio-init
+
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    container_name: scheduler
+    volumes:
+      - /home/cc/eval-loop-chi/scripts:/app/scripts
+    environment:
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - LABEL_STUDIO_URL=http://label-studio:8080
+      - LABEL_STUDIO_USERNAME=gourmetgramuser@gmail.com
+      - LABEL_STUDIO_PASSWORD=gourmetgrampassword
+      - LABEL_STUDIO_USER_TOKEN=ab9927067c51ff279d340d7321e4890dc2841c4a
 
 volumes:
   food11:

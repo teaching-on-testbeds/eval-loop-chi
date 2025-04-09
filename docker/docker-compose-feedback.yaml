@@ -28,7 +28,7 @@ services:
     depends_on:
       - minio
     volumes:
-      - /home/cc/eval-loop-chi/docker/task_0.json:/tmp/task_0.json
+      - /home/cc/eval-loop-chi/data/task_0.json:/tmp/task_0.json
       - /home/cc/eval-loop-chi/gourmetgram/instance/uploads/test_image.jpeg:/tmp/test_image.jpeg
     entrypoint: |
       /bin/sh -c "
@@ -86,7 +86,8 @@ services:
       - FASTAPI_SERVER_URL=http://fastapi_server:8000 # let Flask app know where to access the inference endpoint
   
   label-studio:
-    image: heartexlabs/label-studio:latest
+    build:
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     volumes:

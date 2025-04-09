@@ -59,3 +59,37 @@ def create_user_feedback_task(fs, image_url, predicted_class, confidence, filena
         f.write(task_json)
    
     return task_id
+
+def create_output_json(fs, image_url, predicted_class, corrected_class, filename):
+    """Create JSON file for feedback in the output/userfeedback2 directory in the format expected by process_outputs.py"""
+    # Create unique task ID
+    task_id = str(uuid.uuid4())
+   
+    # Create data in the expected format
+    feedback_data = {
+        "task": {
+            "data": {
+                "image": image_url
+            }
+        },
+        "result": [
+            {
+                "type": "choices",
+                "value": {
+                    "choices": [corrected_class]
+                }
+            }
+        ]
+    }
+   
+    # Create JSON file in memory
+    task_json = json.dumps(feedback_data, indent=2)
+   
+    # Define the object path
+    object_path = f"labelstudio/output/userfeedback2/feedback_{task_id}.json"
+   
+    # Upload JSON using s3fs
+    with fs.open(object_path, 'w') as f:
+        f.write(task_json)
+   
+    return object_path

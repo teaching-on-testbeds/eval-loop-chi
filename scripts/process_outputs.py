@@ -21,7 +21,8 @@ def process_outputs():
     output_mappings = {
         "randomsampled": "cleanproduction",
         "lowconfidence": "lowconfidence", 
-        "userfeedback": "userfeedback"
+        "userfeedback": "userfeedback",
+        "userfeedback2": "userfeedback2",
     }
     
     # Process each output directory
@@ -33,7 +34,6 @@ def process_outputs():
             
             
             for json_file in json_files:
-                print(json_file)
                 # Read and parse the JSON file
                 with fs.open(json_file, 'r') as f:
                     try:

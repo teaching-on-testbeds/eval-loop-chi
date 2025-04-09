@@ -45,6 +45,7 @@ services:
       mc mb -p myminio/cleanproduction
       mc mb -p myminio/lowconfidence
       mc mb -p myminio/userfeedback
+      mc mb -p myminio/userfeedback2
 
       mc anonymous set public myminio/production
       
@@ -56,6 +57,7 @@ services:
       mc mb -p myminio/labelstudio/output/randomsampled
       mc mb -p myminio/labelstudio/output/lowconfidence
       mc mb -p myminio/labelstudio/output/userfeedback
+      mc mb -p myminio/labelstudio/output/userfeedback2
       
       # Copy JSON files
       mc cp /tmp/task_0.json myminio/labelstudio/tasks/randomsampled/

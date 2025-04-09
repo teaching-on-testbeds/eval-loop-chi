@@ -473,25 +473,184 @@ docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 3
 ::: {.cell .markdown}
 Now that we've collected labeled data from human annotators in Label Studio, we need to process these annotations and organize them for model retraining. The labeled data is currently stored in the /labelstudio/output/ path in our MinIO storage system.
 
-Make sure you've finished the tasks in the Label Studio. To process these annotations and create properly organized training data, run:
+Make sure you've finished the tasks in the Label Studio. To process these annotations and create organized training data, run:
 
 ```bash
 docker exec <label_studio_container_id> python3 /label-studio/sync_script.py 
 docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py
 ```
 
-This script:
+This does the following:
 
 - Synchronizes results by sending output tasks to the respective folders in `labelstudio` bucket
 - Extracts the human-verified labels from the annotation results
 - Retrieves the corresponding images from our production storage
 - Organizes these images into class-specific buckets based on their corrected labels
 - Creates a structured dataset ready for model retraining
-- Maintains separate tracking for annotations from different feedback sources (random sampling, user feedback, and low confidence predictions)
 
 :::
 
 ::: {.cell .markdown}
 ### Get explicit labels from users
+
+Our last method is to allow users to explicitly label their images, by changing the label that is assigned by the classifier. This feedback may be sparse (some users won't bother giving feedback even if the label is wrong) and noisy (some users may give incorrect feedback).
+
+Use the below command to modify app.py :
+
+```bash
+nano /home/cc/eval-loop-chi/gourmetgram/app.py
+```
+2. Add to imports at the top of the file : 
+
+```python
+from functions.feedback_tasks import create_output_json
+
+PREDICTION_TEMPLATE_PATH = os.path.join('static', 'templates', 'prediction-result.html')
+```
+
+3. Update Upload Function and create a new route `/api/classes` that returns list of classes to the frontend: 
+
+```python
+@app.route('/predict', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        f = request.files['file']
+        filename = secure_filename(f.filename)
+        img_path = os.path.join(app.instance_path, 'uploads', filename)
+        f.save(img_path)
+       
+        preds, probs = request_fastapi(img_path)
+        if preds:
+            pred_index = np.where(classes == preds)[0][0]
+            
+            # Format the class directory name with the index
+            class_dir = f"class_{pred_index:02d}"
+            
+            # Create the S3 path
+            bucket_name = "production"
+            s3_path = f"{bucket_name}/{class_dir}/{filename}"
+            
+            # Upload the file to S3/MinIO
+            fs.put(img_path, s3_path)
+
+            # Store this prediction for feedback
+            prediction_id = str(uuid.uuid4())
+            current_predictions[prediction_id] = {
+                "prediction_id": prediction_id,
+                "filename": filename,
+                "prediction": preds,
+                "confidence": probs,
+                "image_url": f"http://localhost:9000/production/{class_dir}/{filename}",
+                "class_dir": class_dir,
+                "sampled": False
+            }
+
+            store_prediction_in_tracking(fs, current_predictions[prediction_id])
+            
+            # Return the result with a dropdown label and pencil icon
+            template = open(PREDICTION_TEMPLATE_PATH).read()
+            
+            result_html = template.replace("{prediction_id}", prediction_id).replace("{prediction}", preds)
+            
+            return result_html
+    
+    return '<a href="#" class="badge badge-warning">Warning</a>'
+
+@app.route('/api/classes', methods=['GET'])
+def get_classes():
+    """Return all available classes as JSON"""
+    return jsonify(classes.tolist())
+```
+
+3. Update feedback function : 
+
+```python
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Handle user feedback about predictions"""
+    data = request.json
+    prediction_id = data.get('prediction_id')
+    corrected_class = data.get('corrected_class')
+    
+    if not prediction_id or not corrected_class:
+        return jsonify({
+            "success": False,
+            "message": "Missing required parameters"
+        }), 400
+    
+    # Get the prediction data
+    pred_data = current_predictions.get(prediction_id)
+    
+    if not pred_data:
+        return jsonify({
+            "success": False,
+            "message": "Prediction not found!"
+        }), 404
+    
+    if pred_data["prediction"] == corrected_class:
+        return jsonify({
+            "success": True,
+            "message": "No changes needed - class already correct"
+        })
+    
+    try:
+        
+        output_json_path = create_output_json(
+            fs,
+            image_url=pred_data["image_url"],
+            predicted_class=pred_data["prediction"],
+            corrected_class=corrected_class,
+            filename=pred_data["filename"]
+        )
+        
+
+        current_predictions[prediction_id]["prediction"] = corrected_class
+        
+        # Calculate the new class directory
+        new_class_index = np.where(classes == corrected_class)[0][0]
+        new_class_dir = f"class_{new_class_index:02d}"
+        current_predictions[prediction_id]["class_dir"] = new_class_dir
+        
+        # Return response
+        return jsonify({
+            "success": True,
+            "message": "Class updated successfully!",
+            "output_json_path": output_json_path
+        })
+        
+    except Exception as e:
+        print(f"Error processing feedback: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Error processing feedback: {str(e)}"
+        }), 500
+```
+
+4. Update Frontend files and rebuild flask container : 
+
+```bash
+# Copying front end files into our flask container to update the UI to include feedback
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/templates/index.html /home/cc/eval-loop-chi/gourmetgram/templates/index.html
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/templates/base.html /home/cc/eval-loop-chi/gourmetgram/templates/base.html
+
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/static/js/main.js /home/cc/eval-loop-chi/gourmetgram/static/js/main.js
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/static/js/class-feedback.js /home/cc/eval-loop-chi/gourmetgram/static/js/class-feedback.js
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/static/css/main.css /home/cc/eval-loop-chi/gourmetgram/static/css/main.css
+
+mkdir -p /home/cc/eval-loop-chi/gourmetgram/static/templates/
+cp /home/cc/eval-loop-chi/frontend/feedback_v2/static/templates/prediction-result.html /home/cc/eval-loop-chi/gourmetgram/static/templates/prediction-result.html
+
+```
+
+```bash
+docker-compose -f /home/cc/eval-loop-chi/docker/docker-compose-feedback.yaml up flask --build
+```
+
+#### Testing the Feedback Loop
+
+1. Go to http://{public-node-ip}:5000.
+2. Upload  images present in data/userfeedback/ folder.
+3. Click the pencil icon and change the predicted class 
+4. Run `docker exec <label_studio_container_id> python3 /label-studio/process_outputs.py` in SSH terminal in order to send the images to the correct class folder in `userfeedback2` bucket
 
 :::

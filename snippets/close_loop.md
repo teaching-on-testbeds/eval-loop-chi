@@ -115,7 +115,7 @@ import datetime
 import uuid
 #Include jsonify here
 from flask import Flask, redirect, url_for, request, render_template, jsonify
-from utils.storage import store_prediction_in_tracking
+from gourmetgram_utils.storage import store_prediction_in_tracking
 ```
 
 Initialize S3 Filesystem and a dictionary to store predictions: 
@@ -234,7 +234,7 @@ nano /home/cc/eval-loop-chi/gourmetgram/app.py
 Add this import to app.py:
 
 ```python
-from utils.feedback_tasks import create_low_confidence_task
+from gourmetgram_utils.feedback_tasks import create_low_confidence_task
 ```
 
 2. Update the upload() function in app.py to identify and send low confidence predictions for review based on a predefined threshold:
@@ -326,7 +326,7 @@ nano /home/cc/eval-loop-chi/gourmetgram/app.py
 1. Import Task Creation Function for user feedback tasks and add the flag icon SVG
 
 ```python
-from utils.feedback_tasks import create_user_feedback_task
+from gourmetgram_utils.feedback_tasks import create_user_feedback_task
 
 ```
 
@@ -496,7 +496,7 @@ nano /home/cc/eval-loop-chi/gourmetgram/app.py
 2. Add to imports at the top of the file : 
 
 ```python
-from utils.feedback_tasks import create_output_json
+from gourmetgram_utils.feedback_tasks import create_output_json
 
 PREDICTION_TEMPLATE_PATH = os.path.join('static', 'templates', 'prediction-result.html')
 ```

@@ -4,7 +4,7 @@
 
 ## Launch containers
 
-Inside the SSH session, bring up the Flask, FastAPI, LabelStudio & MinIO services:
+Inside the SSH session, bring up the Flask, FastAPI, LabelStudio, Scheduler & MinIO services:
 
 
 ```bash

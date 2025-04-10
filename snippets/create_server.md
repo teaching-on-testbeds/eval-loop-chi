@@ -136,6 +136,7 @@ Now, we can use `python-chi` to execute commands on the instance, to set it up. 
 ::: {.cell .code}
 ```python
 s.execute("git clone https://github.com/teaching-on-testbeds/eval-loop-chi")
+s.execute("cd eval-loop-chi && git clone -b fastapi https://github.com/teaching-on-testbeds/gourmetgram.git")
 ```
 :::
 

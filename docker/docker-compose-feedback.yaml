@@ -7,28 +7,120 @@ services:
     container_name: fastapi_server
     ports:
       - "8000:8000"  # for HTTP requests
+  
+  minio:
+      image: minio/minio
+      container_name: minio
+      ports:
+        - "9000:9000"
+        - "9001:9001"
+      environment: 
+        - MINIO_ROOT_USER=minioadmin
+        - MINIO_ROOT_PASSWORD=minioadmin
+      volumes:
+        - food11:/data
+      command: server /data --console-address ':9001'
+    
+  # Initialization container for MinIO
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    volumes:
+      - /home/cc/eval-loop-chi/data/task_0.json:/tmp/task_0.json
+      - /home/cc/eval-loop-chi/gourmetgram/instance/uploads/test_image.jpeg:/tmp/test_image.jpeg
+    entrypoint: |
+      /bin/sh -c "
+      # Wait for MinIO to be ready
+      sleep 5
+      
+      # Configure MinIO client
+      mc alias set myminio http://minio:9000 minioadmin minioadmin
+      
+      # Create buckets if they don't exist
+      mc mb -p myminio/production
+      mc mb -p myminio/labelstudio
+      mc mb -p myminio/tracking
+      mc mb -p myminio/cleanproduction
+      mc mb -p myminio/lowconfidence
+      mc mb -p myminio/userfeedback
+      mc mb -p myminio/userfeedback2
+
+      mc anonymous set public myminio/production
+      
+      # Create labelstudio structure
+      mc mb -p myminio/labelstudio/tasks/randomsampled
+      mc mb -p myminio/labelstudio/tasks/lowconfidence
+      mc mb -p myminio/labelstudio/tasks/userfeedback
+      
+      mc mb -p myminio/labelstudio/output/randomsampled
+      mc mb -p myminio/labelstudio/output/lowconfidence
+      mc mb -p myminio/labelstudio/output/userfeedback
+      mc mb -p myminio/labelstudio/output/userfeedback2
+      
+      # Copy JSON files
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/randomsampled/
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/lowconfidence/
+      mc cp /tmp/task_0.json myminio/labelstudio/tasks/userfeedback/
+
+      # Copy test image
+      mc mb -p myminio/production/class_10
+      mc cp /tmp/test_image.jpeg myminio/production/class_10/
+
+      # Create empty production.json in tracking bucket
+      echo '[]' > /tmp/production.json
+      mc cp /tmp/production.json myminio/tracking/
+      
+      echo 'MinIO initialization completed'
+      "
 
   flask:
     build:
-      context: https://github.com/teaching-on-testbeds/gourmetgram.git#fastapi
+      context: /home/cc/eval-loop-chi/gourmetgram
+      dockerfile: Dockerfile
     container_name: flask
     ports:
       - "5000:5000"
     environment:
       - FASTAPI_SERVER_URL=http://fastapi_server:8000 # let Flask app know where to access the inference endpoint
-
-  jupyter:
-    image: quay.io/jupyter/pytorch-notebook:pytorch-2.5.1
-    container_name: jupyter
+  
+  label-studio:
+    image: heartexlabs/label-studio:latest
     ports:
-      - "8888:8888"
-    environment:
-      - FOOD11_DATA_DIR=/mnt/Food-11
+      - "8080:8080"
     volumes:
-      - /home/cc/eval-loop-chi/workspace:/home/jovyan/work # mount workspace
-      - food11:/mnt
-    command: >
-      bash -c "start-notebook.sh"
+      - /home/cc/eval-loop-chi/scripts:/label-studio/scripts
+    environment:
+      - LABEL_STUDIO_URL=http://label-studio:8080
+      - LABEL_STUDIO_USERNAME=gourmetgramuser@gmail.com
+      - LABEL_STUDIO_PASSWORD=gourmetgrampassword
+      - LABEL_STUDIO_USER_TOKEN=ab9927067c51ff279d340d7321e4890dc2841c4a
+      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/data
+      - POSTGRES_HOST=app-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=apppass
+      - POSTGRES_DB=appdb
+    depends_on:
+      - minio-init
+
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    container_name: scheduler
+    volumes:
+      - /home/cc/eval-loop-chi/scripts:/app/scripts
+    environment:
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - LABEL_STUDIO_URL=http://label-studio:8080
+      - LABEL_STUDIO_USERNAME=gourmetgramuser@gmail.com
+      - LABEL_STUDIO_PASSWORD=gourmetgrampassword
+      - LABEL_STUDIO_USER_TOKEN=ab9927067c51ff279d340d7321e4890dc2841c4a
 
 volumes:
   food11:

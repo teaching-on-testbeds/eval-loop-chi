@@ -50,7 +50,7 @@ We will also host a Jupyter container for interacting with the "production" data
 
 When you are ready to begin, you will continue with the next step, in which you bring up and configure a VM instance! To begin this step, open this experiment on Trovi:
 
-* Use this link: [Evaluation of ML systems by closing the feedback loop](https://chameleoncloud.org/experiment/share/) on Trovi
+* Use this link: [Evaluation of ML systems by closing the feedback loop](https://chameleoncloud.org/experiment/share/285f3758-3df2-4226-99ab-c243aa715b8e) on Trovi
 * Then, click “Launch on Chameleon”. This will start a new Jupyter server for you, with the experiment materials already in it, including the notebok to bring up the VM instance.
 
 

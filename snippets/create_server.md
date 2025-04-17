@@ -26,7 +26,7 @@ context.choose_site(default="KVM@TACC")
 
 ::: {.cell .markdown}
 
-We will use bring up a `m1.medium` flavor server with the `CC-Ubuntu24.04` disk image. 
+We will bring up a `m1.medium` flavor VM instance with the `CC-Ubuntu24.04` disk image. 
 
 > **Note**: the following cell brings up a server only if you don't already have one with the same name! (Regardless of its error state.) If you have a server in ERROR state already, delete it first in the Horizon GUI before you run this cell.
 
@@ -94,9 +94,11 @@ security_groups = [
   {'name': "allow-5000", 'port': 5000, 'description': "Enable TCP port 5000 (used by Flask)"},
   {'name': "allow-8000", 'port': 8000, 'description': "Enable TCP port 8000 (used by FastAPI)"},
   {'name': "allow-8888", 'port': 8888, 'description': "Enable TCP port 8888 (used by Jupyter)"},
-  {'name': "allow-3000", 'port': 3000, 'description': "Enable TCP port 3000 (used by Grafana)"},
-  {'name': "allow-9090", 'port': 9090, 'description': "Enable TCP port 9090 (used by Prometheus)"},
-  {'name': "allow-8080", 'port': 8080, 'description': "Enable TCP port 8080 (used by cAdvisor, Label Studio)"}
+  {'name': "allow-9000", 'port': 9000, 'description': "Enable TCP port 9000 (used by MinIO API)"},
+  {'name': "allow-9001", 'port': 9001, 'description': "Enable TCP port 9001 (used by MinIO Web UI)"},
+  {'name': "allow-8080", 'port': 8080, 'description': "Enable TCP port 8080 (used by cAdvisor, Label Studio, Airflow)"},
+  {'name': "allow-8081", 'port': 8081, 'description': "Enable TCP port 8081 (alt for 8080)"}
+
 ]
 ```
 :::
@@ -136,7 +138,6 @@ Now, we can use `python-chi` to execute commands on the instance, to set it up. 
 ::: {.cell .code}
 ```python
 s.execute("git clone https://github.com/teaching-on-testbeds/eval-loop-chi")
-s.execute("cd eval-loop-chi && git clone -b fastapi https://github.com/teaching-on-testbeds/gourmetgram.git")
 ```
 :::
 

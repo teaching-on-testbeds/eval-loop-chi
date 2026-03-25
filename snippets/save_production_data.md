@@ -50,7 +50,7 @@ In the menu sidebar, click "Buckets". Note that there is already a bucket named 
 
 ```
   minio-init:
-    image: minio/mc
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z-cpuv1
     container_name: minio_init
     depends_on:
       - minio

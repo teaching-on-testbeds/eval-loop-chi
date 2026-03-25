@@ -268,7 +268,7 @@ In the menu sidebar, click "Buckets". Note that there is already a bucket named 
 
 ```
   minio-init:
-    image: minio/mc
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z-cpuv1
     container_name: minio_init
     depends_on:
       - minio
@@ -1573,7 +1573,7 @@ Run the following cell, and make sure the correct project is selected.
 
 ```python
 # runs on Chameleon Jupyter environment
-from chi import server, context
+from chi import server, context, lease
 import chi, os, time, datetime
 
 context.version = "1.0" 
@@ -1587,6 +1587,8 @@ context.choose_site(default="KVM@TACC")
 username = os.getenv('USER') # all exp resources will have this prefix
 s = server.get_server(f"node-eval-loop-{username}")
 s.delete()
+l = lease.get_lease(f"lease-eval-loop-{username}")
+l.delete()
 ```
 
 

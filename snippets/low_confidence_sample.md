@@ -21,7 +21,7 @@ We will use the Label Studio API to automate the setup of a new project and task
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -31,7 +31,7 @@ import random
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
@@ -47,7 +47,7 @@ For this project, our labeling UI will be slightly different - we are going to a
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -74,7 +74,7 @@ LABEL_CONFIG = """
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 project_config = {
     "title": "Food11 Low Confidence",
@@ -104,7 +104,7 @@ Let's authenticate to MinIO:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -114,7 +114,7 @@ BUCKET_NAME = "production"
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -140,7 +140,7 @@ Now, we'll get a list of objects in the "production" bucket that are:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []
@@ -177,7 +177,7 @@ If you don't have any samples with "low confidence", adjust the threshold below 
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys
 ```
 :::
@@ -198,7 +198,7 @@ and these will be visible to the human annotator.
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks = []
 for item in all_keys:
     key = item["key"]

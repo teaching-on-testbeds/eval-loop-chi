@@ -63,6 +63,7 @@ Run the following cell, and make sure the correct project is selected.
 
 
 ```python
+# runs on Chameleon Jupyter environment
 from chi import server, context, lease, network
 import chi, os, time, datetime
 
@@ -86,6 +87,7 @@ First we will reserve the VM instance for 6 hours, starting now:
 
 
 ```python
+# runs on Chameleon Jupyter environment
 l = lease.Lease(f"lease-eval-loop-{username}", duration=datetime.timedelta(hours=6))
 l.add_flavor_reservation(id=chi.server.get_flavor_id("m1.medium"), amount=1)
 l.submit(idempotent=True)
@@ -93,6 +95,7 @@ l.submit(idempotent=True)
 
 
 ```python
+# runs on Chameleon Jupyter environment
 l.show()
 ```
 
@@ -102,6 +105,7 @@ Now we can launch an instance using that lease:
 
 
 ```python
+# runs on Chameleon Jupyter environment
 s = server.Server(
     f"node-eval-loop-{username}", 
     image_name="CC-Ubuntu24.04",
@@ -116,10 +120,12 @@ Then, we'll associate a floating IP with the instance:
 
 
 ```python
+# runs on Chameleon Jupyter environment
 s.associate_floating_ip()
 ```
 
 ```python
+# runs on Chameleon Jupyter environment
 s.refresh()
 s.check_connectivity()
 ```
@@ -129,6 +135,7 @@ In the output below, make a note of the floating IP that has been assigned to yo
 
 
 ```python
+# runs on Chameleon Jupyter environment
 s.refresh()
 s.show(type="widget")
 ```
@@ -141,6 +148,7 @@ The following security groups will be created (if they do not already exist in o
 
 
 ```python
+# runs on Chameleon Jupyter environment
 security_groups = [
   {'name': "allow-ssh", 'port': 22, 'description': "Enable SSH traffic on TCP port 22"},
   {'name': "allow-5000", 'port': 5000, 'description': "Enable TCP port 5000 (used by Flask)"},
@@ -156,6 +164,7 @@ security_groups = [
 
 
 ```python
+# runs on Chameleon Jupyter environment
 for sg in security_groups:
   secgroup = network.SecurityGroup({
       'name': sg['name'],
@@ -180,6 +189,7 @@ Now, we can use `python-chi` to execute commands on the instance, to set it up. 
 
 
 ```python
+# runs on Chameleon Jupyter environment
 s.execute("git clone https://github.com/teaching-on-testbeds/eval-loop-chi")
 ```
 
@@ -191,6 +201,7 @@ Here, we will set up the container framework.
 
 
 ```python
+# runs on Chameleon Jupyter environment
 s.execute("curl -sSL https://get.docker.com/ | sudo sh")
 s.execute("sudo groupadd -f docker; sudo usermod -aG docker $USER")
 ```
@@ -287,6 +298,7 @@ For the modified GourmetGram application, we:
 * added imports to `app.py`:
 
 ```python
+# runs on node-eval-loop
 from mimetypes import guess_type # used to identify the type of image
 from datetime import datetime # used to generate timestamp tag for image
 import uuid # used to generate unique ID per image
@@ -298,6 +310,7 @@ executor = ThreadPoolExecutor(max_workers=2)  # can adjust max_workers as needed
 * added this near the beginning of `app.py`, to connect to the object store:
 
 ```python
+# runs on node-eval-loop
 # New! Authenticate to MinIO object store
 s3 = boto3.client(
     's3',
@@ -311,6 +324,7 @@ s3 = boto3.client(
 * added this function to `app.py`:
 
 ```python
+# runs on node-eval-loop
 # New! for uploading production images to MinIO bucket
 def upload_production_bucket(img_path, preds, confidence, prediction_id):
     classes = np.array(["Bread", "Dairy product", "Dessert", "Egg", "Fried food",
@@ -350,6 +364,7 @@ def upload_production_bucket(img_path, preds, confidence, prediction_id):
 * and finally, when a prediction is ready, we call it (asynchronously, so the user does not have to wait for it to return):
 
 ```python
+# runs on node-eval-loop
 # create a unique ID for the prediction - used in filename    
 prediction_id = str(uuid.uuid4())
 executor.submit(upload_production_bucket, img_path, preds, probs, prediction_id)
@@ -558,7 +573,7 @@ and compare those, to evaluate the accuracy of our system on "production" data.
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 from urllib.parse import urlparse
@@ -572,7 +587,7 @@ First, we need to get the details we will need to authenticate to MinIO and to L
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 PROJECT_ID = 1  # use the first project set up in Label Studio
@@ -590,7 +605,7 @@ Now, we can authenticate to MinIO:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 s3 = boto3.client(
     "s3",
     endpoint_url=MINIO_URL,
@@ -607,7 +622,7 @@ And, we can authenticate to LabelStudio and get the details of all the "tasks". 
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 response = requests.get(
     f"{LABEL_STUDIO_URL}/api/projects/{PROJECT_ID}/export?exportType=JSON",
     headers={"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
@@ -618,7 +633,7 @@ tasks = response.json()
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks
 ```
 
@@ -628,7 +643,7 @@ Now, we can compute the accuracy of our model on the production data:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 total, correct = 0, 0
 
 for task in tasks:
@@ -647,7 +662,7 @@ for task in tasks:
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 print(f"Accuracy: {correct}/{total} = {correct / total:.2%}" if total else "No valid comparisons made.")
 ```
 
@@ -677,7 +692,7 @@ This time, we will use the Label Studio API to automate the setup of the new pro
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -685,13 +700,13 @@ import random
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -714,7 +729,7 @@ LABEL_CONFIG = """
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 
 # configure a project - set up its name and the appearance of the labeling interface
@@ -742,7 +757,7 @@ Let's authenticate to MinIO:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -751,7 +766,7 @@ SAMPLE_SIZE = 3  # Number of images to sample
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -770,7 +785,7 @@ get a list of objects in the "production" bucket, and randomly sample some:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys = []
 paginator = s3.get_paginator("list_objects_v2")
 for page in paginator.paginate(Bucket=BUCKET_NAME):
@@ -785,7 +800,7 @@ and then, send those as tasks to Label Studio:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # generate a URL for each object we want to label, so that the annotator can view the image from their browser
 tasks = []
 for key in sampled_keys:
@@ -830,7 +845,7 @@ If we did automate this process, though, we would want to make sure to only samp
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []
@@ -874,7 +889,7 @@ We will use the Label Studio API to automate the setup of a new project and task
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -882,7 +897,7 @@ import random
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
@@ -894,7 +909,7 @@ For this project, our labeling UI will be slightly different - we are going to a
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -919,7 +934,7 @@ LABEL_CONFIG = """
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 project_config = {
     "title": "Food11 Low Confidence",
@@ -943,7 +958,7 @@ Let's authenticate to MinIO:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -951,7 +966,7 @@ BUCKET_NAME = "production"
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -973,7 +988,7 @@ Now, we'll get a list of objects in the "production" bucket that are:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []
@@ -1006,7 +1021,7 @@ If you don't have any samples with "low confidence", adjust the threshold below 
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys
 ```
 
@@ -1023,7 +1038,7 @@ and these will be visible to the human annotator.
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks = []
 for item in all_keys:
     key = item["key"]
@@ -1085,6 +1100,7 @@ For the modified GourmetGram application, we are going to return a flag icon alo
 Then, if the user clicks the flag icon, we will add a tag to the corresponding object (note that the key of the object to tag is passed to the function when the flag icon is clicked!):
 
 ```python
+# runs on node-eval-loop
 @app.route('/flag/<path:key>', methods=['POST'])
 def flag_object(key):
     bucket = "production"
@@ -1159,7 +1175,7 @@ Now, let's set up a Label Studio project and tasks for images that have been fla
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -1167,14 +1183,14 @@ import random
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -1199,7 +1215,7 @@ LABEL_CONFIG = """
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 project_config = {
     "title": "Food11 User Flagged",
@@ -1223,7 +1239,7 @@ Let's authenticate to MinIO:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -1231,7 +1247,7 @@ BUCKET_NAME = "production"
 ```
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -1253,7 +1269,7 @@ Now, we'll get a list of objects in the "production" bucket that are:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []
@@ -1282,7 +1298,7 @@ for page in paginator.paginate(Bucket=BUCKET_NAME):
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys
 ```
 
@@ -1291,7 +1307,7 @@ We will set up tasks to label each of these flagged images:
 
 
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks = []
 for item in all_keys:
     key = item["key"]
@@ -1361,6 +1377,7 @@ Then, if the user chanegs the label, we will add a tag to the corresponding obje
 
 
 ```python
+# runs on node-eval-loop
 @app.route('/correct-label/<path:key>', methods=['POST'])
 def correct_label(key):
     new_label = request.form.get('corrected_class')
@@ -1465,6 +1482,7 @@ substituting the floating IP assigned to your instance in place of `A.B.C.D`. Lo
 Airflow is a workflow orchestrator for running any pipeline that represented as a DAG - directed acyclic graph. Here's an example of basic DAG for Airflow:
 
 ```python
+# runs on node-eval-loop
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
@@ -1551,7 +1569,6 @@ but we'll stop here for now, since we have not set up our training and monitorin
 
 
 
-
 ## Delete resources
 
 When we are finished, we must delete the VM server instance to make the resources available to other users.
@@ -1562,6 +1579,7 @@ Run the following cell, and make sure the correct project is selected.
 
 
 ```python
+# runs on Chameleon Jupyter environment
 from chi import server, context
 import chi, os, time, datetime
 
@@ -1572,11 +1590,11 @@ context.choose_site(default="KVM@TACC")
 
 
 ```python
+# runs on Chameleon Jupyter environment
 username = os.getenv('USER') # all exp resources will have this prefix
 s = server.get_server(f"node-eval-loop-{username}")
 s.delete()
 ```
-
 
 
 <hr>

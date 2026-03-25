@@ -22,7 +22,7 @@ This time, we will use the Label Studio API to automate the setup of the new pro
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -32,7 +32,7 @@ import random
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
@@ -40,7 +40,7 @@ LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -65,7 +65,7 @@ LABEL_CONFIG = """
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 
 # configure a project - set up its name and the appearance of the labeling interface
@@ -99,7 +99,7 @@ Let's authenticate to MinIO:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -110,7 +110,7 @@ SAMPLE_SIZE = 3  # Number of images to sample
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -133,7 +133,7 @@ get a list of objects in the "production" bucket, and randomly sample some:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys = []
 paginator = s3.get_paginator("list_objects_v2")
 for page in paginator.paginate(Bucket=BUCKET_NAME):
@@ -152,7 +152,7 @@ and then, send those as tasks to Label Studio:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # generate a URL for each object we want to label, so that the annotator can view the image from their browser
 tasks = []
 for key in sampled_keys:
@@ -205,7 +205,7 @@ If we did automate this process, though, we would want to make sure to only samp
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []

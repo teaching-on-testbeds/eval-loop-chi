@@ -42,6 +42,7 @@ substituting the floating IP assigned to your instance in place of `A.B.C.D`. Lo
 Airflow is a workflow orchestrator for running any pipeline that represented as a DAG - directed acyclic graph. Here's an example of basic DAG for Airflow:
 
 ```python
+# runs on node-eval-loop
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta
@@ -130,7 +131,6 @@ We could extend this pipeline to -
 but we'll stop here for now, since we have not set up our training and monitoring infrastructure in this experiment.
 
 :::
-
 
 
 

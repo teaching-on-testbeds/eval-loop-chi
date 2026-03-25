@@ -23,6 +23,7 @@ For the modified GourmetGram application, we are going to return a flag icon alo
 Then, if the user clicks the flag icon, we will add a tag to the corresponding object (note that the key of the object to tag is passed to the function when the flag icon is clicked!):
 
 ```python
+# runs on node-eval-loop
 @app.route('/flag/<path:key>', methods=['POST'])
 def flag_object(key):
     bucket = "production"
@@ -101,7 +102,7 @@ Now, let's set up a Label Studio project and tasks for images that have been fla
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 import os
@@ -111,7 +112,7 @@ import random
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 ```
@@ -120,7 +121,7 @@ LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_CONFIG = """
 <View>
   <Image name="image" value="$image" maxWidth="500px"/>
@@ -147,7 +148,7 @@ LABEL_CONFIG = """
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 headers = {"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
 project_config = {
     "title": "Food11 User Flagged",
@@ -177,7 +178,7 @@ Let's authenticate to MinIO:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 MINIO_URL = os.environ['MINIO_URL']
 MINIO_ACCESS_KEY = os.environ['MINIO_USER']
 MINIO_SECRET_KEY = os.environ['MINIO_PASSWORD']
@@ -187,7 +188,7 @@ BUCKET_NAME = "production"
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 # note: we need to use the public IP of the MinIO service, not the hostname on the internal Docker network
 # because we will use this S3 client to generate "pre-signed URLs" for images that we will label in Label Studio
 # and these URLs must work in our own browser - outside of the Docker network
@@ -213,7 +214,7 @@ Now, we'll get a list of objects in the "production" bucket that are:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 from datetime import datetime, timezone, timedelta
 
 all_keys = []
@@ -244,7 +245,7 @@ for page in paginator.paginate(Bucket=BUCKET_NAME):
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 all_keys
 ```
 :::
@@ -257,7 +258,7 @@ We will set up tasks to label each of these flagged images:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks = []
 for item in all_keys:
     key = item["key"]
@@ -331,6 +332,7 @@ Then, if the user chanegs the label, we will add a tag to the corresponding obje
 
 
 ```python
+# runs on node-eval-loop
 @app.route('/correct-label/<path:key>', methods=['POST'])
 def correct_label(key):
     new_label = request.form.get('corrected_class')

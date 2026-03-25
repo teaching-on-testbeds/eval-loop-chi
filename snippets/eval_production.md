@@ -15,7 +15,7 @@ and compare those, to evaluate the accuracy of our system on "production" data.
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 import requests
 import boto3 
 from urllib.parse import urlparse
@@ -33,7 +33,7 @@ First, we need to get the details we will need to authenticate to MinIO and to L
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 LABEL_STUDIO_URL = os.environ['LABEL_STUDIO_URL']
 LABEL_STUDIO_TOKEN = os.environ['LABEL_STUDIO_USER_TOKEN']
 PROJECT_ID = 1  # use the first project set up in Label Studio
@@ -55,7 +55,7 @@ Now, we can authenticate to MinIO:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 s3 = boto3.client(
     "s3",
     endpoint_url=MINIO_URL,
@@ -76,7 +76,7 @@ And, we can authenticate to LabelStudio and get the details of all the "tasks". 
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 response = requests.get(
     f"{LABEL_STUDIO_URL}/api/projects/{PROJECT_ID}/export?exportType=JSON",
     headers={"Authorization": f"Token {LABEL_STUDIO_TOKEN}"}
@@ -89,7 +89,7 @@ tasks = response.json()
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 tasks
 ```
 :::
@@ -103,7 +103,7 @@ Now, we can compute the accuracy of our model on the production data:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 total, correct = 0, 0
 
 for task in tasks:
@@ -124,7 +124,7 @@ for task in tasks:
 
 ::: {.cell .code}
 ```python
-# runs inside Jupyter container on node-eval-loop
+# runs on Jupyter container on node-eval-loop
 print(f"Accuracy: {correct}/{total} = {correct / total:.2%}" if total else "No valid comparisons made.")
 ```
 :::

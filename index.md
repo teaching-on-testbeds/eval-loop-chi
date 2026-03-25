@@ -298,7 +298,6 @@ For the modified GourmetGram application, we:
 * added imports to `app.py`:
 
 ```python
-# runs on node-eval-loop
 from mimetypes import guess_type # used to identify the type of image
 from datetime import datetime # used to generate timestamp tag for image
 import uuid # used to generate unique ID per image
@@ -310,7 +309,6 @@ executor = ThreadPoolExecutor(max_workers=2)  # can adjust max_workers as needed
 * added this near the beginning of `app.py`, to connect to the object store:
 
 ```python
-# runs on node-eval-loop
 # New! Authenticate to MinIO object store
 s3 = boto3.client(
     's3',
@@ -324,7 +322,6 @@ s3 = boto3.client(
 * added this function to `app.py`:
 
 ```python
-# runs on node-eval-loop
 # New! for uploading production images to MinIO bucket
 def upload_production_bucket(img_path, preds, confidence, prediction_id):
     classes = np.array(["Bread", "Dairy product", "Dessert", "Egg", "Fried food",
@@ -364,7 +361,6 @@ def upload_production_bucket(img_path, preds, confidence, prediction_id):
 * and finally, when a prediction is ready, we call it (asynchronously, so the user does not have to wait for it to return):
 
 ```python
-# runs on node-eval-loop
 # create a unique ID for the prediction - used in filename    
 prediction_id = str(uuid.uuid4())
 executor.submit(upload_production_bucket, img_path, preds, probs, prediction_id)
@@ -1100,7 +1096,6 @@ For the modified GourmetGram application, we are going to return a flag icon alo
 Then, if the user clicks the flag icon, we will add a tag to the corresponding object (note that the key of the object to tag is passed to the function when the flag icon is clicked!):
 
 ```python
-# runs on node-eval-loop
 @app.route('/flag/<path:key>', methods=['POST'])
 def flag_object(key):
     bucket = "production"
@@ -1377,7 +1372,6 @@ Then, if the user chanegs the label, we will add a tag to the corresponding obje
 
 
 ```python
-# runs on node-eval-loop
 @app.route('/correct-label/<path:key>', methods=['POST'])
 def correct_label(key):
     new_label = request.form.get('corrected_class')
@@ -1482,7 +1476,6 @@ substituting the floating IP assigned to your instance in place of `A.B.C.D`. Lo
 Airflow is a workflow orchestrator for running any pipeline that represented as a DAG - directed acyclic graph. Here's an example of basic DAG for Airflow:
 
 ```python
-# runs on node-eval-loop
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime, timedelta

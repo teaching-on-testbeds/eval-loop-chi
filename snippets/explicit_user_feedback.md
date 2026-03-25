@@ -23,7 +23,6 @@ For the modified GourmetGram application, we are going to return a flag icon alo
 Then, if the user clicks the flag icon, we will add a tag to the corresponding object (note that the key of the object to tag is passed to the function when the flag icon is clicked!):
 
 ```python
-# runs on node-eval-loop
 @app.route('/flag/<path:key>', methods=['POST'])
 def flag_object(key):
     bucket = "production"
@@ -332,7 +331,6 @@ Then, if the user chanegs the label, we will add a tag to the corresponding obje
 
 
 ```python
-# runs on node-eval-loop
 @app.route('/correct-label/<path:key>', methods=['POST'])
 def correct_label(key):
     new_label = request.form.get('corrected_class')

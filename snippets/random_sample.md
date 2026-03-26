@@ -5,7 +5,7 @@
 
 ### Label random sample of production images
 
-We had previously configured Label Studio so that human annotators would be asked to label *all* images in the production bucket. (Any time we "Sync storage" in Label Studio, new images in the production bucket are added as tasks in Label Studio.)
+We had previously configured Label Studio so that human annotators would be asked to label *all* images in the production bucket. (Any time we "Sync storage" from the Cloud Storage settings in Label Studio, new images in the production bucket are added as tasks in Label Studio.)
 
 Of course, for a large scale production service, this is impractical.
 

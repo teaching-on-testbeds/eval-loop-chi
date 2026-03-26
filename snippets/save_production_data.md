@@ -6,6 +6,7 @@
 
 Our first step in making sure that we "close the feedback loop" is to save the data that is submitted to our service in production, so that we can later evaluate the performance of our model on "production" data.
 
+> **Note**: In a real system, we would design an appropriate data platform where we track every request with lots of associated metadata. For this exercise, to keep things simple, we'll just land all production samples in MinIO, with metadata (including predictions!) saved in "tags". This is not at all a scalable approach. But it is fine for our purpose of understanding how to "close the feedback loop".
 
 :::
 
@@ -46,7 +47,7 @@ http://A.B.C.D:9001
 
 substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with `your-access-key` and password `your-secret-key`.
 
-In the menu sidebar, click "Buckets". Note that there is already a bucket named "production". We created this bucket using a "sidecar" container in our Docker compose file - a container whose entire role was to create the bucket, then stop:
+In the menu sidebar, under "Buckets", note that there is already a bucket named "production". We created this bucket using a "sidecar" container in our Docker compose file - a container whose entire role was to create the bucket, then stop:
 
 ```
   minio-init:
@@ -71,7 +72,7 @@ In the menu sidebar, click "Buckets". Note that there is already a bucket named 
 
 ### Modify service to send data to production bucket
 
-Then, we need to modify our service to send data to the production bucket!
+Then, we had to modify our service to send data to the production bucket!
 
 Our modified Flask app, with data sent to MinIO, is [in the production branch](https://github.com/teaching-on-testbeds/gourmetgram/tree/production) of the "gourmetgram" repository. 
 

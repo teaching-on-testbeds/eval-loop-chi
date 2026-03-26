@@ -228,6 +228,7 @@ where
 
 Our first step in making sure that we "close the feedback loop" is to save the data that is submitted to our service in production, so that we can later evaluate the performance of our model on "production" data.
 
+> **Note**: In a real system, we would design an appropriate data platform where we track every request with lots of associated metadata. For this exercise, to keep things simple, we'll just land all production samples in MinIO, with metadata (including predictions!) saved in "tags". This is not at all a scalable approach. But it is fine for our purpose of understanding how to "close the feedback loop".
 
 
 
@@ -264,7 +265,7 @@ http://A.B.C.D:9001
 
 substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with `your-access-key` and password `your-secret-key`.
 
-In the menu sidebar, click "Buckets". Note that there is already a bucket named "production". We created this bucket using a "sidecar" container in our Docker compose file - a container whose entire role was to create the bucket, then stop:
+In the menu sidebar, under "Buckets", note that there is already a bucket named "production". We created this bucket using a "sidecar" container in our Docker compose file - a container whose entire role was to create the bucket, then stop:
 
 ```
   minio-init:
@@ -287,7 +288,7 @@ In the menu sidebar, click "Buckets". Note that there is already a bucket named 
 
 ### Modify service to send data to production bucket
 
-Then, we need to modify our service to send data to the production bucket!
+Then, we had to modify our service to send data to the production bucket!
 
 Our modified Flask app, with data sent to MinIO, is [in the production branch](https://github.com/teaching-on-testbeds/gourmetgram/tree/production) of the "gourmetgram" repository. 
 
@@ -446,6 +447,7 @@ Note that Label Studio is now running *in addition to* the Flask, FastAPI, and M
 
 
 
+
 ### Label production images in Label Studio
 
 In our initial implementation, we will use LabelStudio to label all of the "production" images. 
@@ -458,9 +460,13 @@ http://A.B.C.D:8080
 
 substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with username `labelstudio@example.com` and password `labelstudio` (we have set these in our Docker compose file).
 
+(It may take a few minutes before LabelStudio loads completely; if it doesn't come up right away, wait and then try again.)
+
 You should see a user interface that invites you to create a project. 
 
 Click on the user icon in the top right, and choose "Account & Settings". In the "Personal Info" section, fill in your real first and last name, and save the changes.
+
+We need to configure some authentication settings. From the LabelStudio menu, click on "Organization", then "API Tokens Settings", and toggle "Legacy Tokens" on. Click "Save Changes".
 
 Now, we are going to create a project in Label Studio! From the "Home" page, click "Create Project". Name it "Food11 Production", and for the description, use: 
 
@@ -516,7 +522,9 @@ If everything seems OK, click "Save".
 
 Next, we need to configure other project details. From inside the project, click on the "Settings" button. 
 
-Then, in the "Cloud Storage" section, click on "Add Source Storage". Fill in the details as follows (leave any that are unspecified blank):
+Then, in the "Cloud Storage" section, click on "Add Source Storage". Here, we use MinIO; more generally, we would store production images in a persistent S3-compatible object storagebucket, such as Chameleon's object storage service.
+
+Fill in the details as follows (leave any that are unspecified blank):
 
 * Storage type: AWS S3 (MinIO is an S3-compatible object store service)
 * Storage title: MinIO
@@ -524,18 +532,24 @@ Then, in the "Cloud Storage" section, click on "Add Source Storage". Fill in the
 * S3 endpoint: http://A.B.C.D:9000 (**substitute the floating IP address assigned to your instance**)
 * Access key ID: your-access-key
 * Secret access key: your-secret-key
-* Treat every bucket object as a source file: checked (so that each object in the bucket is interpreted as an image to classify)
-* Recursive scan: checked (so that it will look inside all of the class-specific directories)
+* Leave "Use pre-signed URLs" on and keep the default expiration
+* Click "Test connection" and make sure the connection is verified
+* Click "Next"
 
-Click "Check connection", then, if it is successful, "Add storage".
+In the "Import settings and preview" section: 
 
-Then, click "Sync storage" and look for a "Completed" message.
+* Set the import method to "Files" (s othat each object in the bucket is interpreted as an image to classify)
+* Toggle "Scan all sub-folders" to "On"  (so that it will look inside all of the class-specific directories)
+* Click "Preview" and confirm that you see a list of image files in the "Files Preview" section.
+* Click "Next".
+
+Finally, click "Save and Sync".
 
 Now, when you click on the project in the Label Studio interface, you will see a list of images to label! Use the Web UI to label the images. Then, take a screenshot of the project dashboard, showing the list of images and the first letters of your name next to each image in the "Annotated by" column.
 
 
 
-Now that we have ground truth labels for the "production" data, we can evaluate the performance of our model on this production data.
+Now that we have human-generated ground truth labels for the "production" data, we can evaluate the performance of our model on this production data.
 
 We'll do this interactively inside a Jupyter notebook. To access the Jupyter service, we will need its randomly generated secret token (which secures it from unauthorized access). We'll get this token by running `jupyter server list` inside the `jupyter` container:
 
@@ -675,7 +689,7 @@ Similarly, our labeled production data can be used as part of a continuous train
 
 ### Label random sample of production images
 
-We had previously configured Label Studio so that human annotators would be asked to label *all* images in the production bucket. (Any time we "Sync storage" in Label Studio, new images in the production bucket are added as tasks in Label Studio.)
+We had previously configured Label Studio so that human annotators would be asked to label *all* images in the production bucket. (Any time we "Sync storage" from the Cloud Storage settings in Label Studio, new images in the production bucket are added as tasks in Label Studio.)
 
 Of course, for a large scale production service, this is impractical.
 
@@ -1468,7 +1482,7 @@ In a browser, open
 http://A.B.C.D:8081
 ```
 
-substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with username `airflow@example.com` and password `airflow` (we have created an initial user with these credentials in our Docker compose file).
+substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with username `admin` and password `gourmetgram_airflow` (we have created an initial user with these credentials in our Docker compose file).
 
 
 
@@ -1505,7 +1519,7 @@ In the Airflow web UI, the `test_dag_hello_world` DAG should be visible in DAGs 
 
 
 
-Now, let's run a "real" pipeline. Our first pipeline will:
+Now, let's run a "real" pipeline. Our first pipeline, the "get_and_label" pipeline, will:
 
 * Get objects from the "production" bucket that have been uploaded in the intervening interval since the last DAG run.
 * Sample from them to get tasks to send to Label Studio, including: a random sample of all images, the low confidence images, the flagged images, and images that have been re-labeled by the user. 
@@ -1533,7 +1547,7 @@ Trigger the DAG manually in the web interface. Observe the effect in MinIO and i
 
 
 
-In Label Studio, label some of the images in the "Food11 Continuous X" project. Then, we can run the next stage, which:
+In Label Studio, label some of the images in the "Food11 Continuous X" project. Then, we can run the next stage, "process_labeled_data", which:
 
 * Gets the new labels from Label Studio
 * Copy the newly labeled images to "production-clean" and "production-noisy" buckets, and remove them from "production-label-wait"
@@ -1556,8 +1570,6 @@ We could extend this pipeline to -
 * trigger re-training
 
 but we'll stop here for now, since we have not set up our training and monitoring infrastructure in this experiment.
-
-
 
 
 

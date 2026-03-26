@@ -1,7 +1,7 @@
 name: ls
 services:
   label-studio:
-    image: heartexlabs/label-studio:1.16.0
+    image: heartexlabs/label-studio:1.23.0
     container_name: label-studio
     ports:
       - "8080:8080"

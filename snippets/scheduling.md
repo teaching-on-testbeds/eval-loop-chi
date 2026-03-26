@@ -32,7 +32,7 @@ In a browser, open
 http://A.B.C.D:8081
 ```
 
-substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with username `airflow@example.com` and password `airflow` (we have created an initial user with these credentials in our Docker compose file).
+substituting the floating IP assigned to your instance in place of `A.B.C.D`. Log in with username `admin` and password `gourmetgram_airflow` (we have created an initial user with these credentials in our Docker compose file).
 
 
 :::
@@ -73,7 +73,7 @@ In the Airflow web UI, the `test_dag_hello_world` DAG should be visible in DAGs 
 
 ::: {.cell .markdown}
 
-Now, let's run a "real" pipeline. Our first pipeline will:
+Now, let's run a "real" pipeline. Our first pipeline, the "get_and_label" pipeline, will:
 
 * Get objects from the "production" bucket that have been uploaded in the intervening interval since the last DAG run.
 * Sample from them to get tasks to send to Label Studio, including: a random sample of all images, the low confidence images, the flagged images, and images that have been re-labeled by the user. 
@@ -103,7 +103,7 @@ Trigger the DAG manually in the web interface. Observe the effect in MinIO and i
 
 ::: {.cell .markdown}
 
-In Label Studio, label some of the images in the "Food11 Continuous X" project. Then, we can run the next stage, which:
+In Label Studio, label some of the images in the "Food11 Continuous X" project. Then, we can run the next stage, "process_labeled_data", which:
 
 * Gets the new labels from Label Studio
 * Copy the newly labeled images to "production-clean" and "production-noisy" buckets, and remove them from "production-label-wait"
@@ -130,6 +130,4 @@ We could extend this pipeline to -
 but we'll stop here for now, since we have not set up our training and monitoring infrastructure in this experiment.
 
 :::
-
-
 
